@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#FF4B2B">
+  <title>Cardápio Digital & Delivery</title>
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- TOPO / CABEÇALHO DA LOJA -->
+  <header class="store-header">
+    <div class="store-cover"></div>
+    <div class="store-profile">
+      <div class="store-logo-wrapper">
+        <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=150&auto=format&fit=crop&q=80" alt="Logo da Hamburgueria" class="store-logo" id="storeLogo">
+      </div>
+      <div class="store-details">
+        <h1 class="store-name" id="storeName">Burger & Co. Delivery</h1>
+        <p class="store-category">Artesanal & Grill • Hambúrgueres & Bebidas</p>
+        <div class="store-badges">
+          <span class="badge badge-status open"><i class="fas fa-circle"></i> Aberto</span>
+          <span class="badge badge-info"><i class="fas fa-clock"></i> 35-50 min</span>
+          <span class="badge badge-info"><i class="fas fa-motorcycle"></i> Taxa: R$ 5,00</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- BARRA DE BUSCA E FILTROS -->
+  <section class="controls-section">
+    <div class="search-box">
+      <i class="fas fa-search search-icon"></i>
+      <input type="text" id="searchInput" placeholder="O que você deseja pedir hoje?" autocomplete="off">
+      <button id="clearSearchBtn" class="clear-search-btn" aria-label="Limpar busca" style="display: none;">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <div class="categories-nav" id="categoriesNav">
+      <button class="category-pill active" data-category="todos">Todos</button>
+      <button class="category-pill" data-category="hamburgueres">Burgers</button>
+      <button class="category-pill" data-category="combos">Combos</button>
+      <button class="category-pill" data-category="bebidas">Bebidas</button>
+      <button class="category-pill" data-category="sobremesas">Sobremesas</button>
+    </div>
+  </section>
+
+  <!-- CATÁLOGO DE PRODUTOS -->
+  <main class="catalog-container">
+    <div class="section-title-wrapper">
+      <h2 class="section-title" id="catalogTitle">Cardápio Completo</h2>
+      <span class="product-counter" id="productCount">0 itens</span>
+    </div>
+
+    <!-- Lista/Grade de Produtos Renderizada Dinamicamente -->
+    <div class="products-grid" id="productsGrid">
+      <div class="loading-state">
+        <i class="fas fa-spinner fa-spin"></i>
+        <p>Carregando cardápio...</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- BOTÃO FLUTUANTE INFERIOR DO CARRINHO (STICKY FOOTER) -->
+  <footer class="cart-floating-bar" id="cartFloatingBar">
+    <div class="cart-floating-content" id="openCartBtn">
+      <div class="cart-floating-info">
+        <span class="cart-floating-badge" id="cartBadgeCount">0</span>
+        <div class="cart-floating-texts">
+          <span class="cart-floating-label">Ver Carrinho</span>
+          <span class="cart-floating-total" id="cartFloatingTotal">R$ 0,00</span>
+        </div>
+      </div>
+      <button class="btn-open-cart">
+        <span>Avançar</span>
+        <i class="fas fa-arrow-right"></i>
+      </button>
+    </div>
+  </footer>
+
+  <!-- MODAL / DRAWER DO CARRINHO & CHECKOUT -->
+  <div class="modal-backdrop" id="modalBackdrop"></div>
+
+  <section class="checkout-drawer" id="checkoutDrawer" aria-hidden="true">
+    <div class="drawer-header">
+      <div class="drawer-drag-handle"></div>
+      <div class="drawer-header-title">
+        <h3><i class="fas fa-shopping-bag"></i> Seu Pedido</h3>
+        <button class="btn-close-drawer" id="closeCartBtn" aria-label="Fechar Carrinho">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="drawer-body">
+      <!-- Lista de Itens do Carrinho -->
+      <div class="cart-items-section">
+        <h4 class="drawer-section-title">Itens selecionados</h4>
+        <div class="cart-items-list" id="cartItemsList">
+          <!-- Renderizado via JS -->
+        </div>
+      </div>
+
+      <!-- Formulário de Checkout / Dados de Entrega -->
+      <form class="checkout-form" id="checkoutForm" onsubmit="return false;">
+        <h4 class="drawer-section-title">Informações para Entrega</h4>
+
+        <div class="form-group">
+          <label for="customerName"><i class="fas fa-user"></i> Seu Nome <span class="required">*</span></label>
+          <input type="text" id="customerName" placeholder="Ex: João da Silva" required>
+        </div>
+
+        <div class="form-group">
+          <label for="deliveryType"><i class="fas fa-map-marker-alt"></i> Tipo de Pedido</label>
+          <select id="deliveryType">
+            <option value="delivery">Entrega (Delivery)</option>
+            <option value="retirada">Retirada no Balcão</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="addressGroup">
+          <label for="customerAddress"><i class="fas fa-home"></i> Endereço Completo <span class="required">*</span></label>
+          <input type="text" id="customerAddress" placeholder="Rua, Número, Bairro, Apto/Bloco" required>
+        </div>
+
+        <div class="form-group">
+          <label for="paymentMethod"><i class="fas fa-credit-card"></i> Forma de Pagamento <span class="required">*</span></label>
+          <select id="paymentMethod">
+            <option value="PIX">PIX (Mais Rápido)</option>
+            <option value="Cartão de Crédito">Cartão de Crédito (na entrega)</option>
+            <option value="Cartão de Débito">Cartão de Débito (na entrega)</option>
+            <option value="Dinheiro">Dinheiro</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="changeGroup" style="display: none;">
+          <label for="changeFor"><i class="fas fa-money-bill-wave"></i> Troco para quanto?</label>
+          <input type="text" id="changeFor" placeholder="Ex: R$ 50,00 ou Não preciso de troco">
+        </div>
+
+        <div class="form-group">
+          <label for="orderNotes"><i class="fas fa-comment-alt"></i> Observações Gerais</label>
+          <textarea id="orderNotes" rows="2" placeholder="Ex: Sem cebola, caprichar no molho, interfone quebrado..."></textarea>
+        </div>
+      </form>
+
+      <!-- Resumo Financeiro -->
+      <div class="order-summary">
+        <div class="summary-row">
+          <span>Subtotal</span>
+          <span id="summarySubtotal">R$ 0,00</span>
+        </div>
+        <div class="summary-row" id="summaryDeliveryRow">
+          <span>Taxa de Entrega</span>
+          <span id="summaryDelivery">R$ 5,00</span>
+        </div>
+        <div class="summary-row total-row">
+          <span>Total a Pagar</span>
+          <span id="summaryTotal">R$ 0,00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rodapé com Botão do WhatsApp -->
+    <div class="drawer-footer">
+      <button type="button" class="btn-whatsapp-order" id="btnSendWhatsApp">
+        <i class="fab fa-whatsapp"></i>
+        <span>Finalizar e Enviar via WhatsApp</span>
+      </button>
+      <p class="whatsapp-disclaimer">Ao clicar, você será redirecionado para o WhatsApp com seu pedido pronto.</p>
+    </div>
+  </section>
+
+  <!-- Script principal -->
+  <script src="app.js"></script>
+</body>
+</html>
