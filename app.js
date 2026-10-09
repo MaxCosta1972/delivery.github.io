@@ -19,7 +19,7 @@ const CONFIG = {
   
   // URL pública do Google Sheets (formato CSV) ou endpoint de API do AppSheet.
   // Deixe null para usar os produtos locais de demonstração.
-  // Exemplo para Google Sheets: "https://docs.google.com/spreadsheets/d/SEU_ID/export?format=csv"
+  // Exemplo para Google Sheets: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQNX_mpJjyNEYlCKXB1buZVTwU76vMh1OIW9J596QtSydpbkSyTgBQLUgPwlmONAh7wvP3hPUgb4Cjl/pub?output=csv"
   googleSheetCsvUrl: null
 };
 
