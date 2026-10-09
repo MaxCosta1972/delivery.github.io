@@ -433,7 +433,7 @@ function handleWhatsAppCheckout() {
     notes: orderNotes
   };
 
-  // Se houver URL do Google Apps Script configurada, grava na planilha em segundo plano
+  // Grava o pedido na planilha do Google em segundo plano
   if (CONFIG.googleAppsScriptOrdersUrl) {
     try {
       fetch(CONFIG.googleAppsScriptOrdersUrl, {
@@ -462,15 +462,38 @@ function handleWhatsAppCheckout() {
   const whatsappUrl = buildWhatsAppUrl(cart, details, totals);
   window.open(whatsappUrl, "_blank");
 
-  // Pergunta para limpar o carrinho após enviar
-  setTimeout(() => {
-    if (confirm("Seu pedido foi direcionado ao WhatsApp! Deseja limpar o carrinho agora?")) {
-      clearCart();
-      closeDrawer();
-    }
-  }, 1000);
+  // 1. Limpa o carrinho
+  clearCart();
+
+  // 2. Limpa campos específicos do pedido anterior
+  document.getElementById("orderNotes").value = "";
+  document.getElementById("changeFor").value = "";
+
+  // 3. Fecha a tela de checkout imediatamente
+  closeDrawer();
+
+  // 4. Exibe notificação suave de sucesso na tela
+  showToast("Pedido enviado com sucesso! 🎉");
 }
 
+/**
+ * Exibe notificação Toast flutuante suave na tela
+ */
+function showToast(message) {
+  let toast = document.getElementById("appToast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "appToast";
+    toast.className = "toast-notification";
+    document.body.appendChild(toast);
+  }
+  toast.innerHTML = `<i class="fas fa-check-circle"></i> <span>${message}</span>`;
+  toast.classList.add("show");
+
+  setTimeout(() => {
+    toast.classList.remove("show");
+  }, 3500);
+}
 // =============================================================================
 // 7. PERSISTÊNCIA DOS DADOS DO CLIENTE (NOME, ENDEREÇO, ETC)
 // =============================================================================
