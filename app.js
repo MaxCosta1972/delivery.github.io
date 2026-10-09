@@ -12,6 +12,7 @@ const CONFIG = {
   storeName: "Burger & Co. Delivery",
   deliveryFee: 5.00,
   currency: "BRL",
+  googleSheetCsvUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQNX_mpJjyNEYlCKXB1buZVTwU76vMh1OIW9J596QtSydpbkSyTgBQLUgPwlmONAh7wvP3hPUgb4Cjl/pub?output=csv",
   
   // Storage Keys
   STORAGE_CART_KEY: "@delivery_app:cart_v1",
