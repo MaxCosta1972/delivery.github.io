@@ -8,12 +8,11 @@
 // =============================================================================
 const CONFIG = {
   // Número da loja com DDI + DDD (Apenas dígitos). Exemplo: 5511999998888
-  storeWhatsApp: "5511999998888",
-  storeName: "Burger & Co. Delivery",
+  storeWhatsApp: "5521999893885",
+  storeName: "Max Delivery",
   deliveryFee: 5.00,
   currency: "BRL",
-  googleSheetCsvUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQNX_mpJjyNEYlCKXB1buZVTwU76vMh1OIW9J596QtSydpbkSyTgBQLUgPwlmONAh7wvP3hPUgb4Cjl/pub?output=csv",
-  
+    
   // Storage Keys
   STORAGE_CART_KEY: "@delivery_app:cart_v1",
   STORAGE_CUSTOMER_KEY: "@delivery_app:customer_v1",
@@ -21,7 +20,7 @@ const CONFIG = {
   // URL pública do Google Sheets (formato CSV) ou endpoint de API do AppSheet.
   // Deixe null para usar os produtos locais de demonstração.
   // Exemplo para Google Sheets: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQNX_mpJjyNEYlCKXB1buZVTwU76vMh1OIW9J596QtSydpbkSyTgBQLUgPwlmONAh7wvP3hPUgb4Cjl/pub?output=csv"
-  googleSheetCsvUrl: null
+  googleSheetCsvUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQNX_mpJjyNEYlCKXB1buZVTwU76vMh1OIW9J596QtSydpbkSyTgBQLUgPwlmONAh7wvP3hPUgb4Cjl/pub?output=csv"
 };
 
 // Catálogo Inicial / Mock (Compatível com os campos do AppSheet / Google Sheets)
