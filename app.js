@@ -21,7 +21,7 @@ const CONFIG = {
   // Deixe null para usar os produtos locais de demonstração.
   // Exemplo para Google Sheets: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQNX_mpJjyNEYlCKXB1buZVTwU76vMh1OIW9J596QtSydpbkSyTgBQLUgPwlmONAh7wvP3hPUgb4Cjl/pub?output=csv"
   googleSheetCsvUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQNX_mpJjyNEYlCKXB1buZVTwU76vMh1OIW9J596QtSydpbkSyTgBQLUgPwlmONAh7wvP3hPUgb4Cjl/pub?output=csv",
-  googleAppsScriptOrdersUrl:"https://script.google.com/macros/s/AKfycbwP4GrqztVgfnvbEWCKNSsYNeUHZDA6nxjG1YDuLDzB_W7VP0OqkwHLRXNLcVXgW8WVYg/exec"
+  googleAppsScriptOrdersUrl: "https://script.google.com/macros/s/AKfycbwP4GrqztVgfnvbEWCKNSsYNeUHZDA6nxjG1YDuLDzB_W7VP0OqkwHLRXNLcVXgW8WVYg/exec"
 };
 
 // Catálogo Inicial / Mock (Compatível com os campos do AppSheet / Google Sheets)
