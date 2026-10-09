@@ -20,7 +20,8 @@ const CONFIG = {
   // URL pública do Google Sheets (formato CSV) ou endpoint de API do AppSheet.
   // Deixe null para usar os produtos locais de demonstração.
   // Exemplo para Google Sheets: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQNX_mpJjyNEYlCKXB1buZVTwU76vMh1OIW9J596QtSydpbkSyTgBQLUgPwlmONAh7wvP3hPUgb4Cjl/pub?output=csv"
-  googleSheetCsvUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQNX_mpJjyNEYlCKXB1buZVTwU76vMh1OIW9J596QtSydpbkSyTgBQLUgPwlmONAh7wvP3hPUgb4Cjl/pub?output=csv"
+  googleSheetCsvUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQNX_mpJjyNEYlCKXB1buZVTwU76vMh1OIW9J596QtSydpbkSyTgBQLUgPwlmONAh7wvP3hPUgb4Cjl/pub?output=csv",
+  googleAppsScriptOrdersUrl:"https://script.google.com/macros/s/AKfycbwP4GrqztVgfnvbEWCKNSsYNeUHZDA6nxjG1YDuLDzB_W7VP0OqkwHLRXNLcVXgW8WVYg/exec"
 };
 
 // Catálogo Inicial / Mock (Compatível com os campos do AppSheet / Google Sheets)
@@ -433,7 +434,7 @@ _Por favor, confirme o recebimento e o tempo estimado de entrega!_`;
 function handleWhatsAppCheckout() {
   const cart = getCart();
   if (cart.length === 0) {
-    alert("Seu carrinho está vazio! Adicione produtos antes de continuar.");
+    alert("Seu carrinho está vazio!");
     return;
   }
 
@@ -444,26 +445,19 @@ function handleWhatsAppCheckout() {
   const changeFor = document.getElementById("changeFor").value.trim();
   const orderNotes = document.getElementById("orderNotes").value.trim();
 
-  // Validações amigáveis
   if (!customerName) {
-    alert("Por favor, informe seu nome para identificar o pedido.");
+    alert("Por favor, informe seu nome.");
     document.getElementById("customerName").focus();
     return;
   }
 
   if (deliveryType === "delivery" && !customerAddress) {
-    alert("Por favor, preencha o endereço completo para a entrega.");
+    alert("Por favor, informe o endereço completo.");
     document.getElementById("customerAddress").focus();
     return;
   }
 
-  // Salvar dados do cliente no localStorage para agilizar próximos pedidos
-  saveCustomerDetails({
-    customerName,
-    customerAddress,
-    deliveryType,
-    paymentMethod
-  });
+  saveCustomerDetails({ customerName, customerAddress, deliveryType, paymentMethod });
 
   const totals = calculateCartTotals();
   const details = {
@@ -475,11 +469,31 @@ function handleWhatsAppCheckout() {
     notes: orderNotes
   };
 
+  // Se você configurou a URL do Apps Script, grava o pedido na planilha em segundo plano
+  if (CONFIG.googleAppsScriptOrdersUrl) {
+    fetch(CONFIG.googleAppsScriptOrdersUrl, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        dataHora: new Date().toLocaleString("pt-BR"),
+        cliente: customerName,
+        tipoEntrega: deliveryType === "delivery" ? "Entrega" : "Retirada",
+        endereco: customerAddress,
+        pagamento: paymentMethod + (changeFor ? " (Troco p/ " + changeFor + ")" : ""),
+        itens: cart,
+        subtotal: totals.subtotal,
+        taxaEntrega: totals.deliveryFee,
+        total: totals.total,
+        observacoes: orderNotes
+      })
+    }).catch(err => console.warn("Erro ao salvar pedido na planilha:", err));
+  }
+
+  // Gera o link e abre o WhatsApp
   const whatsappUrl = buildWhatsAppUrl(cart, details, totals);
-
-  // Redireciona o usuário para o aplicativo do WhatsApp
   window.open(whatsappUrl, "_blank");
-
+}
   // Opcional: Você pode optar por limpar o carrinho ou mantê-lo.
   // Limpamos com um leve delay para caso o usuário volte
   setTimeout(() => {
