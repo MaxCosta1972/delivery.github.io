@@ -1,31 +1,32 @@
 /**
  * DELIVERY WEB APP - FRONT-END & MOBILE LOGIC
- * Arquitetura: Mobile-First, Vanilla JS, persistência em localStorage e integração via WhatsApp
+ * Arquitetura: Mobile-First, Vanilla JS, persistência em localStorage e integração via WhatsApp & Google Sheets
  */
 
 // =============================================================================
 // 1. CONFIGURAÇÕES DA LOJA E INTEGRAÇÃO
 // =============================================================================
 const CONFIG = {
-  // Número da loja com DDI + DDD (Apenas dígitos). Exemplo: 5511999998888
+  // Número da loja com DDI + DDD (Apenas dígitos)
   storeWhatsApp: "5521999893885",
   storeName: "Max Delivery",
   deliveryFee: 5.00,
   currency: "BRL",
-    
+  
   // Storage Keys
   STORAGE_CART_KEY: "@delivery_app:cart_v1",
   STORAGE_CUSTOMER_KEY: "@delivery_app:customer_v1",
   
-  // URL pública do Google Sheets (formato CSV) ou endpoint de API do AppSheet.
-  // Deixe null para usar os produtos locais de demonstração.
-  // Exemplo para Google Sheets: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQNX_mpJjyNEYlCKXB1buZVTwU76vMh1OIW9J596QtSydpbkSyTgBQLUgPwlmONAh7wvP3hPUgb4Cjl/pub?output=csv"
+  // URL CSV da sua planilha (para puxar os lanches)
+  // Cole a URL que você já tinha gerado se quiser ler os lanches da planilha
   googleSheetCsvUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQNX_mpJjyNEYlCKXB1buZVTwU76vMh1OIW9J596QtSydpbkSyTgBQLUgPwlmONAh7wvP3hPUgb4Cjl/pub?output=csv",
+
+  // URL do Google Apps Script (para GRAVAR os pedidos na aba 'Pedidos')
+  // Cole a URL do Apps Script aqui. Se deixar null, ele apenas abre o WhatsApp normalmente!
   googleAppsScriptOrdersUrl: "https://script.google.com/macros/s/AKfycbwP4GrqztVgfnvbEWCKNSsYNeUHZDA6nxjG1YDuLDzB_W7VP0OqkwHLRXNLcVXgW8WVYg/exec"
 };
 
-// Catálogo Inicial / Mock (Compatível com os campos do AppSheet / Google Sheets)
-// Campos exigidos: Nome do Produto, Descrição, Valor, URL da Imagem (+ Categoria e ID)
+// Catálogo Inicial / Fallback (exibido se a planilha estiver vazia)
 const INITIAL_PRODUCTS = [
   {
     id: "prod-1",
@@ -100,13 +101,15 @@ const formatCurrency = (val) => {
   }).format(val || 0);
 };
 
+function escapeHTML(str) {
+  return (str || "").replace(/[&<>'"]/g, 
+    tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+  );
+}
+
 // =============================================================================
 // 3. CAMADA DE DADOS E LOCALSTORAGE DO CARRINHO
 // =============================================================================
-/**
- * Recupera o carrinho do localStorage
- * @returns {Array} Array de itens do carrinho [{ id, nome, valor, imagem, quantidade }]
- */
 function getCart() {
   try {
     const rawCart = localStorage.getItem(CONFIG.STORAGE_CART_KEY);
@@ -117,10 +120,6 @@ function getCart() {
   }
 }
 
-/**
- * Salva o carrinho no localStorage e atualiza a UI
- * @param {Array} cart 
- */
 function saveCart(cart) {
   try {
     localStorage.setItem(CONFIG.STORAGE_CART_KEY, JSON.stringify(cart));
@@ -130,10 +129,6 @@ function saveCart(cart) {
   updateCartUI();
 }
 
-/**
- * Adiciona 1 unidade do produto ao carrinho
- * @param {string} productId 
- */
 function addToCart(productId) {
   const product = products.find(p => p.id === productId);
   if (!product) return;
@@ -156,10 +151,6 @@ function addToCart(productId) {
   saveCart(cart);
 }
 
-/**
- * Reduz 1 unidade do produto no carrinho (remove se chegar a 0)
- * @param {string} productId 
- */
 function decreaseItemQuantity(productId) {
   let cart = getCart();
   const existingItem = cart.find(item => item.id === productId);
@@ -175,27 +166,17 @@ function decreaseItemQuantity(productId) {
   saveCart(cart);
 }
 
-/**
- * Remove completamente um item do carrinho
- * @param {string} productId 
- */
 function removeFromCart(productId) {
   let cart = getCart();
   cart = cart.filter(item => item.id !== productId);
   saveCart(cart);
 }
 
-/**
- * Limpa todo o carrinho
- */
 function clearCart() {
   localStorage.removeItem(CONFIG.STORAGE_CART_KEY);
   updateCartUI();
 }
 
-/**
- * Calcula totais do carrinho
- */
 function calculateCartTotals() {
   const cart = getCart();
   const subtotal = cart.reduce((acc, item) => acc + (item.valor * item.quantidade), 0);
@@ -213,16 +194,11 @@ function calculateCartTotals() {
 // =============================================================================
 // 4. RENDERIZAÇÃO DA INTERFACE (CATÁLOGO & CARRINHO)
 // =============================================================================
-
-/**
- * Renderiza o catálogo de produtos respeitando busca e categoria
- */
 function renderCatalog() {
   const grid = document.getElementById("productsGrid");
   const counter = document.getElementById("productCount");
   const cart = getCart();
 
-  // Filtragem
   const filtered = products.filter(item => {
     const matchesCategory = currentFilter === "todos" || item.categoria === currentFilter;
     const matchesSearch = item.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -243,7 +219,6 @@ function renderCatalog() {
   }
 
   grid.innerHTML = filtered.map(item => {
-    // Verifica se já está no carrinho para exibir controle de quantidade
     const cartItem = cart.find(ci => ci.id === item.id);
     const qty = cartItem ? cartItem.quantidade : 0;
 
@@ -282,14 +257,11 @@ function renderCatalog() {
   }).join("");
 }
 
-/**
- * Atualiza o footer flutuante e o modal/drawer do carrinho
- */
 function updateCartUI() {
   const { subtotal, deliveryFee, total, totalQuantity } = calculateCartTotals();
   const cart = getCart();
 
-  // 1. Atualizar Barra Flutuante (Sticky Bottom Bar)
+  // 1. Atualizar Barra Flutuante
   const floatingBar = document.getElementById("cartFloatingBar");
   const badgeCount = document.getElementById("cartBadgeCount");
   const floatingTotal = document.getElementById("cartFloatingTotal");
@@ -303,7 +275,7 @@ function updateCartUI() {
     closeDrawer();
   }
 
-  // 2. Atualizar Lista interna do Drawer de Checkout
+  // 2. Atualizar Lista do Drawer
   const cartItemsList = document.getElementById("cartItemsList");
   if (cart.length === 0) {
     cartItemsList.innerHTML = `<p style="color: var(--text-muted); text-align: center; padding: 10px 0;">Seu carrinho está vazio.</p>`;
@@ -338,7 +310,6 @@ function updateCartUI() {
   document.getElementById("summaryDelivery").textContent = formatCurrency(deliveryFee);
   document.getElementById("summaryTotal").textContent = formatCurrency(total);
 
-  // Re-renderizar o catálogo para refletir botões de quantidade atuais
   renderCatalog();
 }
 
@@ -351,7 +322,7 @@ function openDrawer() {
 
   document.getElementById("checkoutDrawer").classList.add("active");
   document.getElementById("modalBackdrop").classList.add("active");
-  document.body.style.overflow = "hidden"; // Trava scroll da página
+  document.body.style.overflow = "hidden";
 }
 
 function closeDrawer() {
@@ -363,27 +334,17 @@ function closeDrawer() {
 // =============================================================================
 // 6. FORMATAÇÃO DA MENSAGEM E REDIRECIONAMENTO WHATSAPP
 // =============================================================================
-
-/**
- * Cria a mensagem de texto estruturada e gera a URL de envio do WhatsApp
- * @param {Array} cart 
- * @param {Object} details 
- * @param {Object} totals 
- * @returns {string} URL completa do WhatsApp
- */
 function buildWhatsAppUrl(cart, details, totals) {
   const dataHora = new Date().toLocaleString("pt-BR", {
     dateStyle: "short",
     timeStyle: "short"
   });
 
-  // Linhas formatadas dos produtos
-  const itensFormatados = cart.map((item, index) => {
+  const itensFormatados = cart.map(item => {
     const itemTotal = formatCurrency(item.valor * item.quantidade);
     return `▪️ *${item.quantidade}x* ${item.nome}\n   _${formatCurrency(item.valor)} cada → Total: ${itemTotal}_`;
   }).join("\n\n");
 
-  // Informações de Entrega
   let enderecoOuRetirada = "";
   if (details.deliveryType === "delivery") {
     enderecoOuRetirada = `🛵 *Modo:* Entrega em Domicílio\n📍 *Endereço:* ${details.address}`;
@@ -391,18 +352,15 @@ function buildWhatsAppUrl(cart, details, totals) {
     enderecoOuRetirada = `🏪 *Modo:* Retirada no Balcão`;
   }
 
-  // Informações de Pagamento
   let infoPagamento = `💳 *Forma de Pagamento:* ${details.paymentMethod}`;
   if (details.paymentMethod === "Dinheiro" && details.changeFor) {
     infoPagamento += ` (Troco para: ${details.changeFor})`;
   }
 
-  // Observações
   const observacoesTxt = details.notes 
     ? `\n📝 *Observações:* ${details.notes}\n` 
     : "";
 
-  // Mensagem Completa Estruturada
   const mensagem = 
 `🍔 *NOVO PEDIDO - ${CONFIG.storeName.toUpperCase()}*
 📅 _${dataHora}_
@@ -423,18 +381,17 @@ ${itensFormatados}
 ══════════════════════
 _Por favor, confirme o recebimento e o tempo estimado de entrega!_`;
 
-  // Retorna a URL codificada da API do WhatsApp
   const phone = CONFIG.storeWhatsApp.replace(/\D/g, "");
   return `https://wa.me/${phone}?text=${encodeURIComponent(mensagem)}`;
 }
 
 /**
- * Validação do checkout e disparo para o WhatsApp
+ * Validação do checkout, gravação opcional na planilha e disparo para o WhatsApp
  */
 function handleWhatsAppCheckout() {
   const cart = getCart();
   if (cart.length === 0) {
-    alert("Seu carrinho está vazio!");
+    alert("Seu carrinho está vazio! Adicione produtos antes de continuar.");
     return;
   }
 
@@ -445,19 +402,26 @@ function handleWhatsAppCheckout() {
   const changeFor = document.getElementById("changeFor").value.trim();
   const orderNotes = document.getElementById("orderNotes").value.trim();
 
+  // Validações
   if (!customerName) {
-    alert("Por favor, informe seu nome.");
+    alert("Por favor, informe seu nome para identificar o pedido.");
     document.getElementById("customerName").focus();
     return;
   }
 
   if (deliveryType === "delivery" && !customerAddress) {
-    alert("Por favor, informe o endereço completo.");
+    alert("Por favor, preencha o endereço completo para a entrega.");
     document.getElementById("customerAddress").focus();
     return;
   }
 
-  saveCustomerDetails({ customerName, customerAddress, deliveryType, paymentMethod });
+  // Salvar dados do cliente para agilizar futuros pedidos
+  saveCustomerDetails({
+    customerName,
+    customerAddress,
+    deliveryType,
+    paymentMethod
+  });
 
   const totals = calculateCartTotals();
   const details = {
@@ -469,35 +433,38 @@ function handleWhatsAppCheckout() {
     notes: orderNotes
   };
 
-  // Se você configurou a URL do Apps Script, grava o pedido na planilha em segundo plano
+  // Se houver URL do Google Apps Script configurada, grava na planilha em segundo plano
   if (CONFIG.googleAppsScriptOrdersUrl) {
-    fetch(CONFIG.googleAppsScriptOrdersUrl, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        dataHora: new Date().toLocaleString("pt-BR"),
-        cliente: customerName,
-        tipoEntrega: deliveryType === "delivery" ? "Entrega" : "Retirada",
-        endereco: customerAddress,
-        pagamento: paymentMethod + (changeFor ? " (Troco p/ " + changeFor + ")" : ""),
-        itens: cart,
-        subtotal: totals.subtotal,
-        taxaEntrega: totals.deliveryFee,
-        total: totals.total,
-        observacoes: orderNotes
-      })
-    }).catch(err => console.warn("Erro ao salvar pedido na planilha:", err));
+    try {
+      fetch(CONFIG.googleAppsScriptOrdersUrl, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dataHora: new Date().toLocaleString("pt-BR"),
+          cliente: customerName,
+          tipoEntrega: deliveryType === "delivery" ? "Entrega" : "Retirada",
+          endereco: customerAddress,
+          pagamento: paymentMethod + (changeFor ? " (Troco p/ " + changeFor + ")" : ""),
+          itens: cart,
+          subtotal: totals.subtotal,
+          taxaEntrega: totals.deliveryFee,
+          total: totals.total,
+          observacoes: orderNotes
+        })
+      }).catch(err => console.warn("Aviso ao salvar pedido na planilha:", err));
+    } catch (e) {
+      console.warn("Falha no disparo para o Apps Script:", e);
+    }
   }
 
-  // Gera o link e abre o WhatsApp
+  // Redireciona o usuário para o aplicativo do WhatsApp
   const whatsappUrl = buildWhatsAppUrl(cart, details, totals);
   window.open(whatsappUrl, "_blank");
-}
-  // Opcional: Você pode optar por limpar o carrinho ou mantê-lo.
-  // Limpamos com um leve delay para caso o usuário volte
+
+  // Pergunta para limpar o carrinho após enviar
   setTimeout(() => {
-    if (confirm("Seu pedido foi direcionado ao WhatsApp! Deseja limpar seu carrinho agora?")) {
+    if (confirm("Seu pedido foi direcionado ao WhatsApp! Deseja limpar o carrinho agora?")) {
       clearCart();
       closeDrawer();
     }
@@ -537,12 +504,8 @@ function loadCustomerDetails() {
 }
 
 // =============================================================================
-// 8. INTEGRAÇÃO COM GOOGLE SHEETS / APPSHEET (OPCIONAL)
+// 8. INTEGRAÇÃO COM GOOGLE SHEETS (LEITURA DO CARDÁPIO VIA CSV)
 // =============================================================================
-/**
- * Exemplo de função para carregar catálogo dinâmico de uma planilha Google Sheets publicada como CSV.
- * Colunas esperadas na planilha: Nome, Descricao, Valor, Imagem, Categoria
- */
 async function loadProductsFromGoogleSheet(csvUrl) {
   if (!csvUrl) return;
 
@@ -551,15 +514,14 @@ async function loadProductsFromGoogleSheet(csvUrl) {
     const csvText = await response.text();
     const rows = csvText.trim().split("\n");
     
-    // Ignora cabeçalho e mapeia linhas
     const parsedProducts = [];
     for (let i = 1; i < rows.length; i++) {
       const cols = rows[i].split(",").map(c => c.trim().replace(/^"|"$/g, ''));
-      if (cols.length >= 4) {
+      if (cols.length >= 4 && cols[0]) {
         parsedProducts.push({
           id: `sheet-${i}`,
           nome: cols[0],
-          descricao: cols[1],
+          descricao: cols[1] || "",
           valor: parseFloat(cols[2].replace("R$", "").replace(",", ".")) || 0,
           imagem: cols[3] || "https://via.placeholder.com/150",
           categoria: cols[4] ? cols[4].toLowerCase() : "outros"
@@ -603,29 +565,16 @@ function handlePaymentMethodChange() {
   changeGroup.style.display = (paymentMethod === "Dinheiro") ? "block" : "none";
 }
 
-function escapeHTML(str) {
-  return (str || "").replace(/[&<>'"]/g, 
-    tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
-  );
-}
-
 // Inicialização da Página
 document.addEventListener("DOMContentLoaded", () => {
-  // 1. Renderiza produtos iniciais
   renderCatalog();
-  
-  // 2. Atualiza estado do carrinho salvo no localStorage
   updateCartUI();
-
-  // 3. Restaura dados do cliente caso existam
   loadCustomerDetails();
 
-  // 4. Se houver URL do Google Sheets configurada, carrega em background
   if (CONFIG.googleSheetCsvUrl) {
     loadProductsFromGoogleSheet(CONFIG.googleSheetCsvUrl);
   }
 
-  // 5. Configurar Filtros de Categoria
   const categoryPills = document.querySelectorAll(".category-pill");
   categoryPills.forEach(pill => {
     pill.addEventListener("click", () => {
@@ -636,7 +585,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // 6. Busca em tempo real
   const searchInput = document.getElementById("searchInput");
   const clearSearchBtn = document.getElementById("clearSearchBtn");
 
@@ -654,15 +602,12 @@ document.addEventListener("DOMContentLoaded", () => {
     searchInput.focus();
   });
 
-  // 7. Eventos do Modal / Drawer
   document.getElementById("openCartBtn").addEventListener("click", openDrawer);
   document.getElementById("closeCartBtn").addEventListener("click", closeDrawer);
   document.getElementById("modalBackdrop").addEventListener("click", closeDrawer);
 
-  // 8. Eventos de Formulário
   document.getElementById("deliveryType").addEventListener("change", handleDeliveryTypeChange);
   document.getElementById("paymentMethod").addEventListener("change", handlePaymentMethodChange);
 
-  // 9. Finalização via WhatsApp
   document.getElementById("btnSendWhatsApp").addEventListener("click", handleWhatsAppCheckout);
 });
